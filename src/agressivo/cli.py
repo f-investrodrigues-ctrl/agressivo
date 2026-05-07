@@ -1033,6 +1033,7 @@ def paper_run(
             doc = {
                 "schema_version": 1,
                 "run_type": "paper_run_summary",
+                "runtime": {"agressivo_version": __version__},
                 "symbol": symbol,
                 "timeframe": timeframe,
                 "started_at": started_at.isoformat(),

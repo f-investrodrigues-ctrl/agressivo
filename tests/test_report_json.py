@@ -10,6 +10,7 @@ from agressivo.runner.report_json import (
     build_backtest_breakout_report,
     build_walk_forward_report,
     metrics_to_dict,
+    runtime_meta,
     satellite_meta,
     trades_to_jsonables,
     write_json_report,
@@ -102,6 +103,8 @@ def test_build_backtest_report_has_satellite_block() -> None:
     )
 
     assert doc["run_type"] == "backtest_breakout"
+    assert doc["runtime"]["agressivo_version"]
+    assert "generated_at_utc" in doc["runtime"]
     assert doc["satellite"]["audit_line"] is None
     assert "metrics" in doc
     assert "trades" not in doc
@@ -187,6 +190,8 @@ def test_build_walk_forward_report_core_regime_in_params() -> None:
     )
 
     assert doc["params"]["core_regime"] == {"trend_ma": 50, "require_above_trend": True}
+    assert doc["runtime"]["agressivo_version"]
+    assert "generated_at_utc" in doc["runtime"]
 
 
 def test_build_walk_forward_report_includes_oos_summary() -> None:
@@ -232,6 +237,12 @@ def test_build_walk_forward_report_includes_oos_summary() -> None:
     )
 
     assert doc["oos_summary"] == oos
+
+
+def test_runtime_meta_has_version_and_timestamp() -> None:
+    meta = runtime_meta()
+    assert meta["agressivo_version"]
+    assert "T" in meta["generated_at_utc"]
 
 
 def test_build_backtest_report_includes_trades_key() -> None:

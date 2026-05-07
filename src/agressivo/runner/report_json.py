@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import math
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from agressivo import __version__
 from agressivo.backtest.engine import Trade
 from agressivo.backtest.metrics import BacktestMetrics
 from agressivo.satellite.resolve import SatelliteResolution
@@ -70,6 +72,13 @@ def write_json_report(path: Path, document: dict[str, Any]) -> None:
     )
 
 
+def runtime_meta() -> dict[str, str]:
+    return {
+        "agressivo_version": __version__,
+        "generated_at_utc": datetime.now(UTC).isoformat(),
+    }
+
+
 def build_backtest_breakout_report(
     *,
     symbol: str,
@@ -109,6 +118,7 @@ def build_backtest_breakout_report(
     doc: dict[str, Any] = {
         "schema_version": 1,
         "run_type": "backtest_breakout",
+        "runtime": runtime_meta(),
         "params": params,
         "satellite": satellite_meta(sat),
         "data": {
@@ -173,6 +183,7 @@ def build_walk_forward_report(
     doc: dict[str, Any] = {
         "schema_version": 1,
         "run_type": "walk_forward",
+        "runtime": runtime_meta(),
         "params": params,
         "satellite": satellite_meta(sat),
         "data": {
