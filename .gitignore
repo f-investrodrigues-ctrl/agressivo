@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+data/cache/
+data/paper_state.json
+*.parquet

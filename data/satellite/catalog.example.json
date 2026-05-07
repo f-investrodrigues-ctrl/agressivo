@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "events": [
+    {
+      "id": "example-may-demo",
+      "title": "Demonstração veto Core (datas perto do «hoje» no PLANO)",
+      "start": "2026-05-03T08:00:00+00:00",
+      "end": "2026-05-03T22:00:00+00:00",
+      "tags": ["demo"],
+      "veto_core": true
+    },
+    {
+      "id": "example-macro-quiet",
+      "title": "Janela de baixa exposição Core (placeholder)",
+      "start": "2026-06-01T12:30:00+00:00",
+      "end": "2026-06-01T16:00:00+00:00",
+      "tags": ["macro", "example"],
+      "veto_core": true
+    },
+    {
+      "id": "example-unlock-info",
+      "title": "Unlock token X — apenas informativo",
+      "start": "2026-06-10T08:00:00+00:00",
+      "duration_hours": 4,
+      "tags": ["unlock", "defi"],
+      "veto_core": false
+    }
+  ]
+}
