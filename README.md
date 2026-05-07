@@ -77,6 +77,10 @@ agressivo paper-run --symbol BTC/USDT --bars 400 --sleep 120 --loops 5
 
 agressivo paper-run --symbol BTC/USDT --bars 400 --sleep 120 --max-consecutive-failures 3
 
+# Opcional: salvar resumo operacional do loop em JSON
+
+agressivo paper-run --symbol BTC/USDT --bars 400 --run-summary-json data/reports/paper_run_summary.json
+
 agressivo paper-close --symbol BTC/USDT
 
 agressivo reconcile --local-qty 0 --exchange-qty 0

@@ -162,6 +162,27 @@ def _should_abort_after_failure(streak: int, max_consecutive_failures: int) -> b
     return streak >= max_consecutive_failures
 
 
+def _paper_run_health_summary(
+    *,
+    polls_total: int,
+    polls_ok: int,
+    polls_failed: int,
+    fail_streak_end: int,
+    max_fail_streak: int,
+    aborted_by_guardrail: bool,
+    stopped_by_keyboard: bool,
+) -> dict[str, int | bool]:
+    return {
+        "polls_total": polls_total,
+        "polls_ok": polls_ok,
+        "polls_failed": polls_failed,
+        "fail_streak_end": fail_streak_end,
+        "max_fail_streak": max_fail_streak,
+        "aborted_by_guardrail": aborted_by_guardrail,
+        "stopped_by_keyboard": stopped_by_keyboard,
+    }
+
+
 @dataclass
 class LoadedFrame:
     df: object
@@ -856,6 +877,11 @@ def paper_run(
         help="Abortar após N falhas seguidas no poll (0 desativa).",
         min=0,
     ),
+    run_summary_json: str | None = typer.Option(
+        None,
+        "--run-summary-json",
+        help="Guardar resumo operacional do loop em JSON.",
+    ),
     mirror_ledger: bool = typer.Option(
         False,
         "--mirror-ledger",
@@ -907,7 +933,13 @@ def paper_run(
     bp = BacktestParams()
 
     nrun = 0
+    polls_ok = 0
+    polls_failed = 0
     fail_streak = 0
+    max_fail_streak = 0
+    aborted_by_guardrail = False
+    stopped_by_keyboard = False
+    started_at = datetime.now(UTC)
 
     try:
         while loops == 0 or nrun < loops:
@@ -957,24 +989,58 @@ def paper_run(
                 save_state(dest, st_c)
 
                 typer.echo(f"  cash={st_c.cash:.2f} qty={st_c.qty:.8f} -> {dest}")
+                polls_ok += 1
                 if fail_streak > 0:
                     typer.echo(f"  recovered after {fail_streak} falha(s) consecutiva(s).")
                 fail_streak = 0
             except Exception as exc:
+                polls_failed += 1
                 fail_streak += 1
+                max_fail_streak = max(max_fail_streak, fail_streak)
                 typer.echo(
                     f"  [poll_error] {type(exc).__name__}: {exc} "
                     f"(streak={fail_streak}/{max_consecutive_failures or 'off'})"
                 )
                 if _should_abort_after_failure(fail_streak, max_consecutive_failures):
                     typer.echo("Abortado: máximo de falhas consecutivas atingido.")
+                    aborted_by_guardrail = True
                     raise typer.Exit(code=1) from exc
 
             if loops == 0 or nrun < loops:
                 time.sleep(max(sleep_sec, 1.0))
 
     except KeyboardInterrupt:
+        stopped_by_keyboard = True
         typer.echo("Encerrado por utilizador.")
+    finally:
+        summary = _paper_run_health_summary(
+            polls_total=nrun,
+            polls_ok=polls_ok,
+            polls_failed=polls_failed,
+            fail_streak_end=fail_streak,
+            max_fail_streak=max_fail_streak,
+            aborted_by_guardrail=aborted_by_guardrail,
+            stopped_by_keyboard=stopped_by_keyboard,
+        )
+        typer.echo(
+            f"RUN_SUMMARY polls={summary['polls_total']} ok={summary['polls_ok']} "
+            f"failed={summary['polls_failed']} max_streak={summary['max_fail_streak']} "
+            f"guardrail_abort={summary['aborted_by_guardrail']} "
+            f"keyboard_stop={summary['stopped_by_keyboard']}"
+        )
+        if run_summary_json:
+            out = Path(run_summary_json)
+            doc = {
+                "schema_version": 1,
+                "run_type": "paper_run_summary",
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "started_at": started_at.isoformat(),
+                "ended_at": datetime.now(UTC).isoformat(),
+                "summary": summary,
+            }
+            write_json_report(out, doc)
+            typer.echo(f"run_summary_json -> {out}")
 
 
 @app.command()
