@@ -12,5 +12,6 @@ build/
 .coverage
 htmlcov/
 data/cache/
+data/reports/
 data/paper_state.json
 *.parquet
