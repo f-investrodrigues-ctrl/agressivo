@@ -73,6 +73,10 @@ agressivo paper-once --symbol BTC/USDT --bars 400
 
 agressivo paper-run --symbol BTC/USDT --bars 400 --sleep 120 --loops 5
 
+# Guardrail opcional: abortar após N falhas consecutivas de polling (0 = desativa)
+
+agressivo paper-run --symbol BTC/USDT --bars 400 --sleep 120 --max-consecutive-failures 3
+
 agressivo paper-close --symbol BTC/USDT
 
 agressivo reconcile --local-qty 0 --exchange-qty 0

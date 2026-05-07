@@ -154,6 +154,14 @@ def _wf_oos_summary(fold_metrics: list[BacktestMetrics]) -> dict[str, float | in
     }
 
 
+def _should_abort_after_failure(streak: int, max_consecutive_failures: int) -> bool:
+    """True quando guardrail de falhas consecutivas deve abortar o ciclo."""
+
+    if max_consecutive_failures <= 0:
+        return False
+    return streak >= max_consecutive_failures
+
+
 @dataclass
 class LoadedFrame:
     df: object
@@ -842,6 +850,12 @@ def paper_run(
     state_file: str | None = typer.Option(None, "--state-file"),
     loops: int = typer.Option(0, "--loops", help="0 = até Ctrl+C"),
     sleep_sec: float = typer.Option(60.0, "--sleep"),
+    max_consecutive_failures: int = typer.Option(
+        3,
+        "--max-consecutive-failures",
+        help="Abortar após N falhas seguidas no poll (0 desativa).",
+        min=0,
+    ),
     mirror_ledger: bool = typer.Option(
         False,
         "--mirror-ledger",
@@ -893,55 +907,68 @@ def paper_run(
     bp = BacktestParams()
 
     nrun = 0
+    fail_streak = 0
 
     try:
         while loops == 0 or nrun < loops:
             nrun += 1
 
             typer.echo(f"--- poll #{nrun} @ {time.strftime('%Y-%m-%d %H:%M:%S')} ---")
+            try:
+                lf3 = _load(symbol, timeframe, exchange, bars, log)
 
-            lf3 = _load(symbol, timeframe, exchange, bars, log)
+                work3 = causal_trim(lf3.df, drop_last_incomplete=drop_last)
 
-            work3 = causal_trim(lf3.df, drop_last_incomplete=drop_last)
+                snap = build_snapshot(
+                    lf3.df,
+                    lf3.qc,
+                    sniper=sniper,
+                    drop_last_incomplete=drop_last,
+                    satellite=sat_rs.catalog,
+                    trend_ma=tm_pr,
+                    require_above_trend=rat_pr,
+                )
 
-            snap = build_snapshot(
-                lf3.df,
-                lf3.qc,
-                sniper=sniper,
-                drop_last_incomplete=drop_last,
-                satellite=sat_rs.catalog,
-                trend_ma=tm_pr,
-                require_above_trend=rat_pr,
-            )
+                typer.echo(
+                    f"  snap ts={snap.bar_timestamp} long={snap.wants_long} "
+                    f"px~{snap.fill_price:.4f} trend_ma={tm_pr} above_trend={rat_pr}"
+                )
 
-            typer.echo(
-                f"  snap ts={snap.bar_timestamp} long={snap.wants_long} px~{snap.fill_price:.4f} "
-                f"trend_ma={tm_pr} above_trend={rat_pr}"
-            )
+                st_a = load_state(dest)
 
-            st_a = load_state(dest)
+                st_b, ev1 = maybe_exit_managed_position(st_a, work3, params=bp, costs=bx)
 
-            st_b, ev1 = maybe_exit_managed_position(st_a, work3, params=bp, costs=bx)
+                for e in ev1:
+                    typer.echo(f"    [{e.kind}] {e.detail}")
 
-            for e in ev1:
-                typer.echo(f"    [{e.kind}] {e.detail}")
+                st_c, ev2 = apply_snapshot_to_state(st_b, snap, params=bp, costs=bx)
 
-            st_c, ev2 = apply_snapshot_to_state(st_b, snap, params=bp, costs=bx)
+                for e in ev2:
+                    typer.echo(f"    [{e.kind}] {e.detail}")
 
-            for e in ev2:
-                typer.echo(f"    [{e.kind}] {e.detail}")
+                _paper_mirror_report(
+                    enabled=mirror_ledger,
+                    symbol=symbol,
+                    events=[*ev1, *ev2],
+                    ledger_file=mirror_ledger_file,
+                    default_ledger=cfg.order_ledger_path,
+                )
 
-            _paper_mirror_report(
-                enabled=mirror_ledger,
-                symbol=symbol,
-                events=[*ev1, *ev2],
-                ledger_file=mirror_ledger_file,
-                default_ledger=cfg.order_ledger_path,
-            )
+                save_state(dest, st_c)
 
-            save_state(dest, st_c)
-
-            typer.echo(f"  cash={st_c.cash:.2f} qty={st_c.qty:.8f} -> {dest}")
+                typer.echo(f"  cash={st_c.cash:.2f} qty={st_c.qty:.8f} -> {dest}")
+                if fail_streak > 0:
+                    typer.echo(f"  recovered after {fail_streak} falha(s) consecutiva(s).")
+                fail_streak = 0
+            except Exception as exc:
+                fail_streak += 1
+                typer.echo(
+                    f"  [poll_error] {type(exc).__name__}: {exc} "
+                    f"(streak={fail_streak}/{max_consecutive_failures or 'off'})"
+                )
+                if _should_abort_after_failure(fail_streak, max_consecutive_failures):
+                    typer.echo("Abortado: máximo de falhas consecutivas atingido.")
+                    raise typer.Exit(code=1) from exc
 
             if loops == 0 or nrun < loops:
                 time.sleep(max(sleep_sec, 1.0))
