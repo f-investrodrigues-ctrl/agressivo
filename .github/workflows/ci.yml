@@ -17,5 +17,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
+      - run: agressivo doctor --json
       - run: ruff check src tests
       - run: pytest -q
