@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import ccxt
 import typer
@@ -183,6 +184,24 @@ def _paper_run_health_summary(
     }
 
 
+def _doctor_snapshot(cfg: Settings) -> dict[str, Any]:
+    sat = cfg.satellite_catalog_path
+    sat_ok = sat is None or sat.is_file()
+    auth_ok = has_auth_config(cfg)
+
+    return {
+        "log_level": cfg.log_level,
+        "exchange": cfg.exchange,
+        "market_type": cfg.exchange_market_type,
+        "execute_orders": bool(cfg.execute_orders),
+        "auth_config_present": auth_ok,
+        "paper_state_parent_exists": cfg.paper_state_path.parent.exists(),
+        "order_ledger_parent_exists": cfg.order_ledger_path.parent.exists(),
+        "satellite_catalog_configured": sat is not None,
+        "satellite_catalog_ok": sat_ok,
+    }
+
+
 @dataclass
 class LoadedFrame:
     df: object
@@ -288,6 +307,30 @@ def _main(verbose: bool = typer.Option(False, "--verbose", "-v")) -> None:
 def version() -> None:
 
     typer.echo(__version__)
+
+
+@app.command("doctor")
+def doctor_cmd(as_json: bool = typer.Option(False, "--json")) -> None:
+    """Preflight local: config, paths e prontidão de credenciais."""
+
+    cfg = get_settings()
+    snap = _doctor_snapshot(cfg)
+
+    if as_json:
+        typer.echo(json.dumps(snap, indent=2, ensure_ascii=False))
+        return
+
+    typer.echo(f"log_level={snap['log_level']} exchange={snap['exchange']}")
+    typer.echo(f"market_type={snap['market_type']} execute_orders={snap['execute_orders']}")
+    typer.echo(f"auth_config_present={snap['auth_config_present']}")
+    typer.echo(
+        f"paper_state_parent_exists={snap['paper_state_parent_exists']} "
+        f"order_ledger_parent_exists={snap['order_ledger_parent_exists']}"
+    )
+    if snap["satellite_catalog_configured"]:
+        typer.echo(f"satellite_catalog_ok={snap['satellite_catalog_ok']}")
+    else:
+        typer.echo("satellite_catalog_ok=not_configured")
 
 
 @app.command("satellite-scan")

@@ -21,6 +21,10 @@ copy .env.example .env
 ```powershell
 agressivo fetch-ohlcv --symbol BTC/USDT --timeframe 1h --limit 500
 
+# Preflight local (config/paths/credenciais presentes)
+
+agressivo doctor
+
 # Qualidade OHLCV sem abortar por veto (data health)
 
 agressivo ohlcv-qc --symbol BTC/USDT --timeframe 1h --bars 800
