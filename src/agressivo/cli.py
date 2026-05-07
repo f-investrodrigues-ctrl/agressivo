@@ -202,6 +202,19 @@ def _doctor_snapshot(cfg: Settings) -> dict[str, Any]:
     }
 
 
+def _doctor_blockers(snap: dict[str, Any]) -> list[str]:
+    blockers: list[str] = []
+    if not bool(snap["paper_state_parent_exists"]):
+        blockers.append("paper_state_parent_missing")
+    if not bool(snap["order_ledger_parent_exists"]):
+        blockers.append("order_ledger_parent_missing")
+    if bool(snap["satellite_catalog_configured"]) and not bool(snap["satellite_catalog_ok"]):
+        blockers.append("satellite_catalog_missing_or_invalid")
+    if bool(snap["execute_orders"]) and not bool(snap["auth_config_present"]):
+        blockers.append("execute_orders_enabled_without_auth")
+    return blockers
+
+
 @dataclass
 class LoadedFrame:
     df: object
@@ -310,27 +323,49 @@ def version() -> None:
 
 
 @app.command("doctor")
-def doctor_cmd(as_json: bool = typer.Option(False, "--json")) -> None:
+def doctor_cmd(
+    as_json: bool = typer.Option(False, "--json"),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Retorna exit code 1 quando houver blockers operacionais.",
+    ),
+) -> None:
     """Preflight local: config, paths e prontidão de credenciais."""
 
     cfg = get_settings()
     snap = _doctor_snapshot(cfg)
+    blockers = _doctor_blockers(snap)
+    snap["blockers"] = blockers
+    snap["ready"] = len(blockers) == 0
 
     if as_json:
         typer.echo(json.dumps(snap, indent=2, ensure_ascii=False))
-        return
-
-    typer.echo(f"log_level={snap['log_level']} exchange={snap['exchange']}")
-    typer.echo(f"market_type={snap['market_type']} execute_orders={snap['execute_orders']}")
-    typer.echo(f"auth_config_present={snap['auth_config_present']}")
-    typer.echo(
-        f"paper_state_parent_exists={snap['paper_state_parent_exists']} "
-        f"order_ledger_parent_exists={snap['order_ledger_parent_exists']}"
-    )
-    if snap["satellite_catalog_configured"]:
-        typer.echo(f"satellite_catalog_ok={snap['satellite_catalog_ok']}")
     else:
-        typer.echo("satellite_catalog_ok=not_configured")
+        typer.echo(f"log_level={snap['log_level']} exchange={snap['exchange']}")
+        typer.echo(f"market_type={snap['market_type']} execute_orders={snap['execute_orders']}")
+        typer.echo(f"auth_config_present={snap['auth_config_present']}")
+        typer.echo(
+            f"paper_state_parent_exists={snap['paper_state_parent_exists']} "
+            f"order_ledger_parent_exists={snap['order_ledger_parent_exists']}"
+        )
+        if snap["satellite_catalog_configured"]:
+            typer.echo(f"satellite_catalog_ok={snap['satellite_catalog_ok']}")
+        else:
+            typer.echo("satellite_catalog_ok=not_configured")
+
+        if blockers:
+            typer.echo(f"blockers={','.join(blockers)}")
+        else:
+            typer.echo("blockers=none")
+
+    if strict and blockers:
+        raise typer.Exit(code=1)
+
+    if strict:
+        typer.echo("doctor_strict=ok")
+    else:
+        typer.echo("doctor_ready=true" if not blockers else "doctor_ready=false")
 
 
 @app.command("satellite-scan")

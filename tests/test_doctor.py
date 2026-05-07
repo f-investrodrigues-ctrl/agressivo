@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agressivo.cli import _doctor_snapshot
+from agressivo.cli import _doctor_blockers, _doctor_snapshot
 from agressivo.config import Settings
 
 
@@ -29,3 +29,17 @@ def test_doctor_snapshot_satellite_missing() -> None:
     snap = _doctor_snapshot(cfg)
     assert snap["satellite_catalog_configured"] is True
     assert snap["satellite_catalog_ok"] is False
+
+
+def test_doctor_blockers_for_missing_satellite() -> None:
+    cfg = Settings(satellite_catalog_path="data/satellite/does-not-exist.json")
+    snap = _doctor_snapshot(cfg)
+    blockers = _doctor_blockers(snap)
+    assert "satellite_catalog_missing_or_invalid" in blockers
+
+
+def test_doctor_blockers_for_execute_without_auth() -> None:
+    cfg = Settings(execute_orders=True, exchange_api_key=None, exchange_api_secret=None)
+    snap = _doctor_snapshot(cfg)
+    blockers = _doctor_blockers(snap)
+    assert "execute_orders_enabled_without_auth" in blockers

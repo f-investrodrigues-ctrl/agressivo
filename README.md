@@ -25,6 +25,10 @@ agressivo fetch-ohlcv --symbol BTC/USDT --timeframe 1h --limit 500
 
 agressivo doctor
 
+# Gate estrito (exit 1 se houver blockers operacionais)
+
+agressivo doctor --strict
+
 # Qualidade OHLCV sem abortar por veto (data health)
 
 agressivo ohlcv-qc --symbol BTC/USDT --timeframe 1h --bars 800
