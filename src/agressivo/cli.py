@@ -190,6 +190,10 @@ def _doctor_snapshot(cfg: Settings) -> dict[str, Any]:
     auth_ok = has_auth_config(cfg)
 
     return {
+        "runtime": {
+            "agressivo_version": __version__,
+            "generated_at_utc": datetime.now(UTC).isoformat(),
+        },
         "log_level": cfg.log_level,
         "exchange": cfg.exchange,
         "market_type": cfg.exchange_market_type,

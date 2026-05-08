@@ -17,6 +17,8 @@ def test_doctor_snapshot_basic_fields() -> None:
     )
     snap = _doctor_snapshot(cfg)
 
+    assert snap["runtime"]["agressivo_version"]
+    assert "T" in snap["runtime"]["generated_at_utc"]
     assert snap["exchange"] == "binance"
     assert snap["market_type"] == "spot"
     assert snap["execute_orders"] is False
