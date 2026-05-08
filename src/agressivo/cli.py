@@ -53,6 +53,7 @@ from agressivo.runner.report_json import (
     build_backtest_breakout_report,
     build_walk_forward_report,
     metrics_to_dict,
+    runtime_meta,
     trades_to_jsonables,
     write_json_report,
 )
@@ -181,6 +182,25 @@ def _paper_run_health_summary(
         "max_fail_streak": max_fail_streak,
         "aborted_by_guardrail": aborted_by_guardrail,
         "stopped_by_keyboard": stopped_by_keyboard,
+    }
+
+
+def _paper_run_summary_document(
+    *,
+    symbol: str,
+    timeframe: str,
+    started_at: datetime,
+    summary: dict[str, int | bool],
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "run_type": "paper_run_summary",
+        "runtime": runtime_meta(),
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "started_at": started_at.isoformat(),
+        "ended_at": datetime.now(UTC).isoformat(),
+        "summary": summary,
     }
 
 
@@ -1199,16 +1219,12 @@ def paper_run(
         )
         if run_summary_json:
             out = Path(run_summary_json)
-            doc = {
-                "schema_version": 1,
-                "run_type": "paper_run_summary",
-                "runtime": {"agressivo_version": __version__},
-                "symbol": symbol,
-                "timeframe": timeframe,
-                "started_at": started_at.isoformat(),
-                "ended_at": datetime.now(UTC).isoformat(),
-                "summary": summary,
-            }
+            doc = _paper_run_summary_document(
+                symbol=symbol,
+                timeframe=timeframe,
+                started_at=started_at,
+                summary=summary,
+            )
             write_json_report(out, doc)
             typer.echo(f"run_summary_json -> {out}")
 
