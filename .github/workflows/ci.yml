@@ -17,6 +17,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
-      - run: agressivo doctor --strict --json
+      - run: agressivo doctor --strict --json --out data/reports/doctor_snapshot.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doctor-snapshot-${{ matrix.python-version }}
+          path: data/reports/doctor_snapshot.json
       - run: ruff check src tests
       - run: pytest -q
