@@ -230,6 +230,26 @@ def _doctor_blockers(
     return blockers
 
 
+def _doctor_document(
+    snap: dict[str, Any],
+    *,
+    actions: list[str],
+    require_auth: bool,
+    require_satellite: bool,
+    blockers: list[str],
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "run_type": "doctor",
+        **snap,
+        "actions": actions,
+        "require_auth": require_auth,
+        "require_satellite": require_satellite,
+        "blockers": blockers,
+        "ready": len(blockers) == 0,
+    }
+
+
 def _doctor_prepare_dirs(cfg: Settings) -> list[str]:
     actions: list[str] = []
 
@@ -392,18 +412,20 @@ def doctor_cmd(
         require_auth=require_auth,
         require_satellite=require_satellite,
     )
-    snap["actions"] = actions
-    snap["require_auth"] = require_auth
-    snap["require_satellite"] = require_satellite
-    snap["blockers"] = blockers
-    snap["ready"] = len(blockers) == 0
+    doc = _doctor_document(
+        snap,
+        actions=actions,
+        require_auth=require_auth,
+        require_satellite=require_satellite,
+        blockers=blockers,
+    )
     if out:
         p = Path(out)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(snap, indent=2, ensure_ascii=False), encoding="utf-8")
+        p.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
 
     if as_json:
-        typer.echo(json.dumps(snap, indent=2, ensure_ascii=False))
+        typer.echo(json.dumps(doc, indent=2, ensure_ascii=False))
     else:
         typer.echo(f"log_level={snap['log_level']} exchange={snap['exchange']}")
         typer.echo(f"market_type={snap['market_type']} execute_orders={snap['execute_orders']}")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agressivo.cli import _doctor_blockers, _doctor_prepare_dirs, _doctor_snapshot
+from agressivo.cli import _doctor_blockers, _doctor_document, _doctor_prepare_dirs, _doctor_snapshot
 from agressivo.config import Settings
 
 
@@ -88,3 +88,21 @@ def test_doctor_snapshot_is_json_serializable() -> None:
     import json
 
     assert json.loads(json.dumps(snap))
+
+
+def test_doctor_document_has_schema_and_run_type() -> None:
+    cfg = Settings(satellite_catalog_path=None)
+    snap = _doctor_snapshot(cfg)
+    blockers = _doctor_blockers(snap)
+    doc = _doctor_document(
+        snap,
+        actions=[],
+        require_auth=False,
+        require_satellite=False,
+        blockers=blockers,
+    )
+
+    assert doc["schema_version"] == 1
+    assert doc["run_type"] == "doctor"
+    assert doc["ready"] is True
+    assert "runtime" in doc
