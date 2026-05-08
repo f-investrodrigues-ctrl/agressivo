@@ -341,6 +341,11 @@ def version() -> None:
 @app.command("doctor")
 def doctor_cmd(
     as_json: bool = typer.Option(False, "--json"),
+    out: str | None = typer.Option(
+        None,
+        "--out",
+        help="Guardar snapshot do doctor em JSON.",
+    ),
     create_missing_dirs: bool = typer.Option(
         False,
         "--create-missing-dirs",
@@ -361,6 +366,10 @@ def doctor_cmd(
     snap["actions"] = actions
     snap["blockers"] = blockers
     snap["ready"] = len(blockers) == 0
+    if out:
+        p = Path(out)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(snap, indent=2, ensure_ascii=False), encoding="utf-8")
 
     if as_json:
         typer.echo(json.dumps(snap, indent=2, ensure_ascii=False))
@@ -393,6 +402,8 @@ def doctor_cmd(
         typer.echo("doctor_strict=ok")
     else:
         typer.echo("doctor_ready=true" if not blockers else "doctor_ready=false")
+    if out:
+        typer.echo(f"doctor_out={Path(out)}")
 
 
 @app.command("satellite-scan")

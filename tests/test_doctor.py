@@ -57,3 +57,11 @@ def test_doctor_prepare_dirs_creates_missing_parents(tmp_path: Path) -> None:
     assert len(actions) >= 1
     assert cfg.paper_state_path.parent.exists()
     assert cfg.order_ledger_path.parent.exists()
+
+
+def test_doctor_snapshot_is_json_serializable() -> None:
+    cfg = Settings()
+    snap = _doctor_snapshot(cfg)
+    import json
+
+    assert json.loads(json.dumps(snap))

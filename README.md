@@ -33,6 +33,10 @@ agressivo doctor --strict
 
 agressivo doctor --create-missing-dirs --strict
 
+# Opcional: guardar snapshot do doctor para auditoria/CI
+
+agressivo doctor --strict --json --out data/reports/doctor_snapshot.json
+
 # Qualidade OHLCV sem abortar por veto (data health)
 
 agressivo ohlcv-qc --symbol BTC/USDT --timeframe 1h --bars 800
