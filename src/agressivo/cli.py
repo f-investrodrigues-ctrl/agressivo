@@ -215,6 +215,22 @@ def _doctor_blockers(snap: dict[str, Any]) -> list[str]:
     return blockers
 
 
+def _doctor_prepare_dirs(cfg: Settings) -> list[str]:
+    actions: list[str] = []
+
+    paper_parent = cfg.paper_state_path.parent
+    if not paper_parent.exists():
+        paper_parent.mkdir(parents=True, exist_ok=True)
+        actions.append(f"created:{paper_parent.as_posix()}")
+
+    ledger_parent = cfg.order_ledger_path.parent
+    if not ledger_parent.exists():
+        ledger_parent.mkdir(parents=True, exist_ok=True)
+        actions.append(f"created:{ledger_parent.as_posix()}")
+
+    return actions
+
+
 @dataclass
 class LoadedFrame:
     df: object
@@ -325,6 +341,11 @@ def version() -> None:
 @app.command("doctor")
 def doctor_cmd(
     as_json: bool = typer.Option(False, "--json"),
+    create_missing_dirs: bool = typer.Option(
+        False,
+        "--create-missing-dirs",
+        help="Criar pais de paper_state/order_ledger quando faltarem.",
+    ),
     strict: bool = typer.Option(
         False,
         "--strict",
@@ -334,8 +355,10 @@ def doctor_cmd(
     """Preflight local: config, paths e prontidão de credenciais."""
 
     cfg = get_settings()
+    actions = _doctor_prepare_dirs(cfg) if create_missing_dirs else []
     snap = _doctor_snapshot(cfg)
     blockers = _doctor_blockers(snap)
+    snap["actions"] = actions
     snap["blockers"] = blockers
     snap["ready"] = len(blockers) == 0
 
@@ -358,6 +381,10 @@ def doctor_cmd(
             typer.echo(f"blockers={','.join(blockers)}")
         else:
             typer.echo("blockers=none")
+        if actions:
+            typer.echo(f"actions={','.join(actions)}")
+        else:
+            typer.echo("actions=none")
 
     if strict and blockers:
         raise typer.Exit(code=1)

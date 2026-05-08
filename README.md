@@ -29,6 +29,10 @@ agressivo doctor
 
 agressivo doctor --strict
 
+# Opcional: criar diretórios faltantes antes do preflight
+
+agressivo doctor --create-missing-dirs --strict
+
 # Qualidade OHLCV sem abortar por veto (data health)
 
 agressivo ohlcv-qc --symbol BTC/USDT --timeframe 1h --bars 800

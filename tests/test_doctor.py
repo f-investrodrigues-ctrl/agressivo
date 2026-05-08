@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from agressivo.cli import _doctor_blockers, _doctor_snapshot
+from pathlib import Path
+
+from agressivo.cli import _doctor_blockers, _doctor_prepare_dirs, _doctor_snapshot
 from agressivo.config import Settings
 
 
@@ -43,3 +45,15 @@ def test_doctor_blockers_for_execute_without_auth() -> None:
     snap = _doctor_snapshot(cfg)
     blockers = _doctor_blockers(snap)
     assert "execute_orders_enabled_without_auth" in blockers
+
+
+def test_doctor_prepare_dirs_creates_missing_parents(tmp_path: Path) -> None:
+    base = tmp_path / "missing" / "nested"
+    cfg = Settings(
+        paper_state_path=base / "paper.json",
+        order_ledger_path=base / "ledger.jsonl",
+    )
+    actions = _doctor_prepare_dirs(cfg)
+    assert len(actions) >= 1
+    assert cfg.paper_state_path.parent.exists()
+    assert cfg.order_ledger_path.parent.exists()
