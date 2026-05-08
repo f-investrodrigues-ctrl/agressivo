@@ -202,7 +202,12 @@ def _doctor_snapshot(cfg: Settings) -> dict[str, Any]:
     }
 
 
-def _doctor_blockers(snap: dict[str, Any]) -> list[str]:
+def _doctor_blockers(
+    snap: dict[str, Any],
+    *,
+    require_auth: bool = False,
+    require_satellite: bool = False,
+) -> list[str]:
     blockers: list[str] = []
     if not bool(snap["paper_state_parent_exists"]):
         blockers.append("paper_state_parent_missing")
@@ -212,6 +217,12 @@ def _doctor_blockers(snap: dict[str, Any]) -> list[str]:
         blockers.append("satellite_catalog_missing_or_invalid")
     if bool(snap["execute_orders"]) and not bool(snap["auth_config_present"]):
         blockers.append("execute_orders_enabled_without_auth")
+    if require_auth and not bool(snap["auth_config_present"]):
+        blockers.append("auth_required_but_missing")
+    if require_satellite and (
+        not bool(snap["satellite_catalog_configured"]) or not bool(snap["satellite_catalog_ok"])
+    ):
+        blockers.append("satellite_required_but_missing_or_invalid")
     return blockers
 
 
@@ -351,6 +362,16 @@ def doctor_cmd(
         "--create-missing-dirs",
         help="Criar pais de paper_state/order_ledger quando faltarem.",
     ),
+    require_auth: bool = typer.Option(
+        False,
+        "--require-auth",
+        help="Tratar ausência de credenciais como blocker.",
+    ),
+    require_satellite: bool = typer.Option(
+        False,
+        "--require-satellite",
+        help="Tratar satélite ausente/inválido como blocker.",
+    ),
     strict: bool = typer.Option(
         False,
         "--strict",
@@ -362,8 +383,14 @@ def doctor_cmd(
     cfg = get_settings()
     actions = _doctor_prepare_dirs(cfg) if create_missing_dirs else []
     snap = _doctor_snapshot(cfg)
-    blockers = _doctor_blockers(snap)
+    blockers = _doctor_blockers(
+        snap,
+        require_auth=require_auth,
+        require_satellite=require_satellite,
+    )
     snap["actions"] = actions
+    snap["require_auth"] = require_auth
+    snap["require_satellite"] = require_satellite
     snap["blockers"] = blockers
     snap["ready"] = len(blockers) == 0
     if out:

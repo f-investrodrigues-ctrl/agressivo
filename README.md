@@ -37,6 +37,11 @@ agressivo doctor --create-missing-dirs --strict
 
 agressivo doctor --strict --json --out data/reports/doctor_snapshot.json
 
+# Política por cenário: exigir auth e/ou satélite no gate
+
+agressivo doctor --strict --require-auth
+agressivo doctor --strict --require-satellite
+
 # Qualidade OHLCV sem abortar por veto (data health)
 
 agressivo ohlcv-qc --symbol BTC/USDT --timeframe 1h --bars 800
